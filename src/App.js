@@ -1,12 +1,91 @@
 import { type } from '@testing-library/user-event/dist/type';
 import { createElement } from 'react';
 import ps2 from './img/ps.jpg';
-import { useState  } from "react";
+import { initializeApp } from "firebase/app";
+import { getFirestore, collection, getDocs, addDoc } from 'firebase/firestore/lite';
+import { useState, useEffect } from "react";
+
 
 function App() {
-  let coords;
 
   const [score, setScore] = useState(0);
+  const [time, setTime] = useState(0);
+  const [running, setRunning] = useState(true);
+
+  const [coords, setCoords] = useState();
+  useEffect(() => {
+    let interval;
+    if (running) {
+      interval = setInterval(() => {
+        setTime((prevTime) => prevTime + 10);
+      }, 10);
+    } else if (!running) {
+      clearInterval(interval);
+    }
+    return () => clearInterval(interval);
+  }, [running]);
+
+
+  useEffect(() => {
+
+    if (score == 3) {
+      setRunning(false);
+
+      const finis_dom = document.createElement("h1");
+      const parents = document.getElementsByClassName("end-score")[0];
+
+      finis_dom.textContent = "Finished at " + ("0" + Math.floor((time / 60000) % 60)).slice(-2) + ":" + ("0" + Math.floor((time / 1000) % 60)).slice(-2) + ":" + ("0" + ((time / 10) % 100)).slice(-2);
+      console.log("Finished at " + ("0" + Math.floor((time / 60000) % 60)).slice(-2) + ":" + ("0" + Math.floor((time / 1000) % 60)).slice(-2) + ":" + ("0" + ((time / 10) % 100)).slice(-2));
+      parents.appendChild(finis_dom);
+    }
+  }, [score]);
+
+
+
+  // Your web app's Firebase configuration
+  const firebaseConfig = {
+    apiKey: "AIzaSyDgTf9R0LyyuM_Lt14L4dODQ3vSeLugSSk",
+    authDomain: "waldo-49e8f.firebaseapp.com",
+    projectId: "waldo-49e8f",
+    storageBucket: "waldo-49e8f.appspot.com",
+    messagingSenderId: "397908372184",
+    appId: "1:397908372184:web:0cbc17885f6e1c238405ad"
+  };
+
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+
+
+  const db = getFirestore(app);
+
+  // Get a list of cities from your database
+
+
+
+  async function testwrite() {
+
+    try {
+      const docRef = await addDoc(collection(db, "users"), {
+        first: "Ada",
+        last: "Lovelace",
+        born: 1815
+      });
+      console.log("Document written with ID: ", docRef.id);
+    } catch (e) {
+      console.error("Error adding document: ", e);
+    }
+
+
+  }
+
+
+
+
+
+
+
+
+
   const characters = {
     kratos: {
       x1: 59,
@@ -40,9 +119,9 @@ function App() {
 
     const x = Math.round((e.nativeEvent.offsetX / e.nativeEvent.target.offsetWidth) * 100);
     const y = Math.round((e.nativeEvent.offsetY / e.nativeEvent.target.offsetHeight) * 100);
-    coords = { x, y };
+    setCoords({ x, y });
 
-
+    console.log(coords);
 
     console.log("height width scale" + e.nativeEvent.target.offsetWidth);
 
@@ -62,60 +141,83 @@ function App() {
 
 
 
-    console.log(coords);
+
   };
 
+  async function testread(btn_val) {
+    const querySnapshot = await getDocs(collection(db, "characters"));
 
 
-  const checkLocation = (e) => {
+    console.log(querySnapshot.docs[btn_val].data())
+    return (querySnapshot.docs[btn_val].data());
+
+  }
+
+
+
+
+  async function checkLocation(e) {
     const score_board = document.getElementsByClassName('score')[0];
     const btn_val = e.target.value;
-    console.log(characters[btn_val]);
 
 
-    if (coords.x >= characters[btn_val].x1 && coords.x <= characters[btn_val].x2 && coords.y >= characters[btn_val].y1 && coords.y <= characters[btn_val].y2) {
+    const char_cor = await testread(btn_val);
+    console.log(char_cor.x2);
+
+
+
+    if (coords.x >= char_cor.x1 && coords.x <= char_cor.x2 && coords.y >= char_cor.y1 && coords.y <= char_cor.y2) {
       console.log("CORRECT!!");
-      setScore(score+1);
-      e.target.style.visibility = "hidden";
-   
-      
+      setScore(score + 1);
+
+      const true_selected = document.getElementById(`${btn_val}`);
+      true_selected.remove();
+
     }
     else {
       console.log("FALSE!!");
 
     }
-  
-
-  
-  
-    
-console.log("aaaaa")
 
 
 
-score_board.classList.add("slidein");
+
+    console.log("aaaaa")
+
+
+
+    score_board.classList.add("slidein");
     setTimeout(() => {
       score_board.classList.remove("slidein");
     }, 1500);
 
 
-    
+
 
   };
 
 
-  
 
 
-  
+
+
 
 
 
   return (
     <div className="test">
+      <div className='timer'>
+        <p>Score:{score}</p>
+
+        <span>  {("0" + Math.floor((time / 60000) % 60)).slice(-2)}:</span>
+        <span>{("0" + Math.floor((time / 1000) % 60)).slice(-2)}:</span>
+        <span>{("0" + ((time / 10) % 100)).slice(-2)}</span>
+       
+      </div>
       <div className='score'> <h1>Your Score is: {score}</h1></div>
+      <div className='end-score'></div>
       <img onClick={getLocation} className='image' src={ps2}></img>
-     
+
 
 
       <div className='btn'>
@@ -124,9 +226,10 @@ score_board.classList.add("slidein");
         </div>
 
         <div className='btn-items'>
-          <button value='kratos' onClick={checkLocation}>Kratos</button>
-          <button value='spiderman' onClick={checkLocation}>Spiderman</button>
-          <button value='solid_snake' onClick={checkLocation}>Solid Snake</button>
+          <button id='0' value='0' onClick={checkLocation}>Kratos</button>
+          <button id='1' value='1' onClick={checkLocation}>Solid Snake</button>
+          <button id='2' value='2' onClick={checkLocation}>Spiderman</button>
+
         </div>
 
       </div>
